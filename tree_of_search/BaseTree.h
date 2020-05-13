@@ -1,27 +1,38 @@
 #pragma once
+#include <stack>
 
 template<class X> class BaseTree
 {
-public:
-
-	class Node
+protected:
+	class BaseNode
 	{
 	public:
-		Node(X&);
+		BaseNode(X&);
 
-		Node(Node&);
+		BaseNode(BaseNode&);
 
-		~Node();
+		virtual ~BaseNode();
+		
+		BaseNode& operator = (BaseNode& obj);
 
-	private:
 		X data;
-		Node* lt;
-		Node* rt;
+		BaseNode* lt;
+		BaseNode* rt;
 	};
 
+    BaseNode* root;
+    BaseNode* iterator;
+	// стек для организации обхода
+    std::stack<BaseNode*> r_nodes;
+
+public:
 	BaseTree();
 
-	BaseTree(BaseTree&);
+	BaseTree(BaseTree<X>& obj);
+
+	BaseTree(X&);
+
+	virtual ~BaseTree();
 
 	virtual bool AddNode(X&) = 0;
 
@@ -33,55 +44,163 @@ public:
 
 	virtual X FindMin() = 0;
 
-	virtual void ClearTree() = 0;
+    virtual int Height() = 0;
 
-	~BaseTree();
+    bool GetData(X&);
 
-protected:
+    bool Next();
 
-	Node* root;
+    bool MoveToRoot();
+
+	void ClearTree();
 };
 
-template<class X> BaseTree<X>::Node::Node(X& DATA)
+// BaseNode
+template<class X> BaseTree<X>::BaseNode::BaseNode(X& Data)
 {
-	data = DATA;
-	lt = rt = nullptr;
+	data = Data;
+    rt = lt = nullptr;
 }
 
-template<class X> BaseTree<X>::Node::Node(Node& obj)
+// рекурсивно копируются все вершины, с сохранением связей
+template<class X> BaseTree<X>::BaseNode::BaseNode(BaseNode& obj)
 {
 	data = obj.data;
 	lt = rt = nullptr;
 
 	if (obj.lt)
-		lt = new Node(obj.lt);
-
-	if (obj.rt)
-		rt = new Node(obj.rt);
+    {
+		lt = new BaseNode(*(obj.lt));
+	}
+    if (obj.rt)
+    {
+		rt = new BaseNode(*(obj.rt));
+    }
 }
 
-template<class X> BaseTree<X>::Node::~Node()
+// рекурсивно удаляем все вершины
+template<class X> BaseTree<X>::BaseNode::~BaseNode()
 {
 	if (lt)
 		delete lt;
 	if (rt)
 		delete rt;
+    lt = rt = nullptr;
 }
 
+template<class X> typename BaseTree<X>::BaseNode& BaseTree<X>::BaseNode::operator = (BaseNode& obj)
+{
+	data = obj.data;
+
+	// проверяем наличие левой части для копирования
+	if (obj.lt)
+	{
+		// смотрим, есть ли готовая вершина, чтобы не делать лишние операции удаления и создания вершины
+		if (lt)
+			*lt = *(obj.lt);
+		else
+			lt = new BaseNode(*(obj.lt));
+	}
+	else
+		// если нечего копировать, то удаляем все, что слева
+		if (lt)
+		{
+			delete lt;
+			lt = nullptr;
+		}
+	// аналогично
+	if (obj.rt)
+	{
+		if (rt)
+			*rt = *(obj.rt);
+		else
+			rt = new BaseNode(*(obj.rt));
+	}
+	else
+		if (rt)
+		{
+			delete rt;
+			rt = nullptr;
+		}
+	return *this;
+}
+
+// BaseTree
 template<class X> BaseTree<X>::BaseTree()
 {
-	//printf_s("constr tree\n");
 	root = nullptr;
+    iterator = nullptr;
+    r_nodes.push(nullptr);
 }
 
-template<class X> BaseTree<X>::BaseTree(BaseTree& obj)
+template<class X> BaseTree<X>::BaseTree(BaseTree<X>& obj)
 {
-	root = new Node(obj.root);
+	root = new BaseNode(obj.root);
+    iterator = root;
+    r_nodes.push(nullptr);
+}
+
+template<class X> BaseTree<X>::BaseTree(X& data)
+{
+	root = new BaseNode(data);
+    iterator = root;
+    r_nodes.push(nullptr);
 }
 
 template<class X> BaseTree<X>::~BaseTree()
 {
-	//printf_s("destr tree\n");
-	if(root)
+	if (root)
 		delete root;
+    root = iterator = nullptr;
+}
+
+template<class X> void BaseTree<X>::ClearTree()
+{
+	if (root)
+        delete root;
+	while (r_nodes.top())
+		r_nodes.pop();
+    root = iterator = nullptr;
+}
+
+template<class X> bool BaseTree<X>::GetData(X& data)
+{
+	if (iterator)
+	{
+		data = iterator->data;
+		return true;
+	}
+	return false
+}
+
+// обход Node-Left-Right
+// вообще можно сделать указатель на функцию для обхода и в приватной зоне описать все 3 обхода, а для выбора отдельную функцию вынести
+template<class X> bool BaseTree<X>::Next()
+{
+	if (iterator)
+	{
+		if (iterator->rt)
+			r_nodes.push(iterator->rt);
+		if (iterator->lt)
+			iterator = iterator->lt;
+		else
+			iterator = r_nodes.top();
+
+		if (iterator)
+		{
+			r_nodes.pop();
+			return true;
+		}
+	}
+    return false;
+}
+
+template<class X> bool BaseTree<X>::MoveToRoot()
+{
+    while(r_nodes.top())
+        r_nodes.pop();
+    iterator = root;
+    if(iterator)
+        return true;
+    return false;
 }
