@@ -10,9 +10,7 @@ protected:
 		BaseNode(X&);
 
 		BaseNode(BaseNode&);
-
-		virtual ~BaseNode();
-		
+				
 		BaseNode& operator = (BaseNode& obj);
 
 		X data;
@@ -78,16 +76,6 @@ template<class X> BaseTree<X>::BaseNode::BaseNode(BaseNode& obj)
     }
 }
 
-// рекурсивно удаляем все вершины
-template<class X> BaseTree<X>::BaseNode::~BaseNode()
-{
-	if (lt)
-		delete lt;
-	if (rt)
-		delete rt;
-    lt = rt = nullptr;
-}
-
 template<class X> typename BaseTree<X>::BaseNode& BaseTree<X>::BaseNode::operator = (BaseNode& obj)
 {
 	data = obj.data;
@@ -150,14 +138,44 @@ template<class X> BaseTree<X>::BaseTree(X& data)
 template<class X> BaseTree<X>::~BaseTree()
 {
 	if (root)
-		delete root;
-    root = iterator = nullptr;
+	{
+		std::queue<BaseNode*> nodes;
+		nodes.push(root);
+		BaseNode* ptr = nullptr;
+		do
+		{
+			ptr = nodes.front();
+			if (ptr->lt)
+				nodes.push(ptr->lt);
+			if (ptr->rt)
+				nodes.push(ptr->rt);
+
+			ptr->lt = ptr->rt = nullptr;
+			delete ptr;
+		} while (!nodes.empty());
+	}
+	root = iterator = nullptr;
 }
 
 template<class X> void BaseTree<X>::ClearTree()
 {
 	if (root)
-        delete root;
+	{
+		std::queue<BaseNode*> nodes;
+		nodes.push(root);
+		BaseNode* ptr = nullptr;
+		do
+		{
+			ptr = nodes.front();
+			if (ptr->lt)
+				nodes.push(ptr->lt);
+			if (ptr->rt)
+				nodes.push(ptr->rt);
+
+			ptr->lt = ptr->rt = nullptr;
+			delete ptr;
+		} while (!nodes.empty());
+	}
 	while (r_nodes.top())
 		r_nodes.pop();
     root = iterator = nullptr;
@@ -170,7 +188,7 @@ template<class X> bool BaseTree<X>::GetData(X& data)
 		data = iterator->data;
 		return true;
 	}
-	return false
+    return false;
 }
 
 // обход Node-Left-Right
